@@ -2,6 +2,14 @@
 
 Configuración de Terraform para crear un cluster GKE básico en Google Cloud.
 
+# diagrama de la solución
+
+Hasta el paso 1 no considera ruteo de backends, por lo tanto no se crean load balancers
+
+
+<img width="681" height="515" alt="Diagrama" src="https://github.com/user-attachments/assets/1e22d41a-5667-450e-9cb2-67b23d4d705d" />
+
+
 ## Setup
 
 Necesitas tener instalado:
