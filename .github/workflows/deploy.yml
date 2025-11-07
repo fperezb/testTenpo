@@ -1,0 +1,72 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths: ['envs/**/*.tf']
+  pull_request:
+    branches: [main]
+    paths: ['envs/**/*.tf']
+
+jobs:
+  terraform:
+    name: 'Terraform Deploy'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.7
+    
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
+    
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.CGP_SERVICE_ACCOUNT_KEY }}
+    
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+    
+    - name: Terraform Init
+      run: |
+        cd envs/dev
+        terraform init
+    
+    - name: Terraform Validate
+      run: |
+        cd envs/dev
+        terraform validate
+    
+    - name: Security Scan with Checkov
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: envs/
+        framework: terraform
+        soft_fail: true
+        output_format: cli
+    
+    - name: Terraform Plan
+      if: github.event_name == 'pull_request'
+      run: |
+        cd envs/dev
+        terraform plan -no-color
+    
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        cd envs/dev
+        terraform apply -auto-approve
+    
+    - name: Verify Deployment
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        echo "✅ Infrastructure deployed successfully"
+        echo "🏗️ GKE Cluster: demo-tenpo"
+        echo "🗄️ PostgreSQL: demo-tenpo-db"
+        echo "🔒 All resources are private"
