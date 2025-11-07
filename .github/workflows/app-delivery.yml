@@ -1,0 +1,71 @@
+name: app-delivery
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'k8s/**'
+      - '.github/workflows/app-delivery.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'k8s/**'
+      - '.github/workflows/app-delivery.yml'
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: quality
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.GCP_REGION }}
+      CLUSTER_NAME: ${{ secrets.GKE_CLUSTER_NAME }}
+      CLUSTER_LOCATION: ${{ secrets.GKE_LOCATION }}
+      ARTIFACT_REGISTRY: ${{ secrets.ARTIFACT_REGISTRY_REPOSITORY }}
+      IMAGE_NAME: customer-query
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: '>= 456.0.0'
+      - name: Configure Artifact Registry auth
+        run: gcloud auth configure-docker --quiet
+      - name: Build and push image
+        run: gcloud builds submit app --region "$REGION" --tag "$ARTIFACT_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"
+      - name: Fetch GKE credentials
+        run: gcloud container clusters get-credentials "$CLUSTER_NAME" --project "$PROJECT_ID" --location "$CLUSTER_LOCATION"
+      - name: Render deployment manifest
+        run: |
+          mkdir -p k8s/rendered
+          export ARTIFACT_REGISTRY="$ARTIFACT_REGISTRY"
+          export IMAGE_TAG="$IMAGE_TAG"
+          envsubst < k8s/deployment.yaml > k8s/rendered/deployment.yaml
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/secret.yaml
+          kubectl apply -f k8s/rendered/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/hpa.yaml
+          kubectl apply -f k8s/certificate.yaml
+          kubectl apply -f k8s/ingress.yaml

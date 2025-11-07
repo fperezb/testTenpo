@@ -66,7 +66,7 @@ jobs:
     - name: Verify Deployment
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: |
-        echo "✅ Infrastructure deployed successfully"
-        echo "🏗️ GKE Cluster: demo-tenpo"
-        echo "🗄️ PostgreSQL: demo-tenpo-db"
-        echo "🔒 All resources are private"
+        echo "Infra OK"
+        echo "Cluster K8S: demo-tenpo"
+        echo "PostgreSQL: demo-tenpo-db"
+        echo "Recusros privados"

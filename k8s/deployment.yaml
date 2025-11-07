@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: customer-query
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-query
+  namespace: default
+  labels:
+    app: customer-query
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: customer-query
+  template:
+    metadata:
+      labels:
+        app: customer-query
+      annotations:
+        logging.gke.io/logging: "true"
+    spec:
+      serviceAccountName: customer-query
+      containers:
+        - name: api
+          image: "${ARTIFACT_REGISTRY}/customer-query:${IMAGE_TAG}"
+          imagePullPolicy: Always
+          env:
+            - name: PORT
+              value: "8080"
+            - name: INSTANCE_CONNECTION_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: customer-query-config
+                  key: instanceConnectionName
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: customer-query-config
+                  key: dbUser
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: customer-query-config
+                  key: dbPassword
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: customer-query-config
+                  key: dbName
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /var/secrets/google/key.json
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: gcp-sa
+              mountPath: /var/secrets/google
+              readOnly: true
+      volumes:
+        - name: gcp-sa
+          secret:
+            secretName: customer-query-sa

@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: customer-query
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: gce
+    networking.gke.io/managed-certificates: customer-query-cert
+    kubernetes.io/ingress.global-static-ip-name: customer-query-ip
+spec:
+  rules:
+    - host: api.tenpo-demo.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-query
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - api.tenpo-demo.internal
+      secretName: customer-query-tls
