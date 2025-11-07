@@ -6,30 +6,8 @@ Repositorio que da solución a los tres desafíos propuestos: documentación de 
 
 ### Diagrama de alto nivel
 
-```mermaid
-flowchart LR
-	Dev["GitHub Actions\n(checkout, lint, test, build)"] -->|Terraform apply| GCPAPI((GCP APIs))
-	subgraph VPC[Proyecto Tenpo - VPC Privada]
-		subgraph PrivateSubnetwork[Subred privada 10.0.0.0/24]
-			GKE[GKE Autopilot/Standard Cluster\nNodos sin IP pública]
-			HPA[Horizontal Pod Autoscaler]
-			Ingress[HTTP(S) Load Balancer]
-			Service[ClusterIP / NodePort Service]
-			Pods[Express App Pods]
-			Logging[(Cloud Logging)]
-		end
-		subgraph DatabaseSubnetwork[Subred privada 10.0.1.0/24]
-			CloudSQL[(Cloud SQL PostgreSQL)]
-		end
-		NAT[NAT Gateway]
-	end
-	Pods -->|Secret + Cloud SQL connector| CloudSQL
-	Pods -->|Stdout JSON| Logging
-	Ingress --> Service --> Pods
-	HPA --> Pods
-	Dev -->|GKE deploy| Pods
-	NAT -->|Salida controlada| Internet
-```
+<img width="751" height="775" alt="diagrama (1)" src="https://github.com/user-attachments/assets/0d26005b-f3c2-4e39-bda4-e8defb5476e7" />
+
 
 ### Estrategia resumida
 - Red privada dedicada con subredes separadas para Kubernetes y base de datos, sin exposición pública de IPs.
