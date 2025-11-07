@@ -32,8 +32,10 @@ terraform apply
 ```
 
 Esto crea:
-- Un cluster GKE llamado `demo-tenpo` con un nodo e2-medium
-- Una instancia PostgreSQL 15 (`demo-tenpo-db`) con tier db-f1-micro
+- VPC privada con subnets para GKE y servicios
+- Un cluster GKE privado (`demo-tenpo`) con nodos sin IPs públicas
+- Una instancia PostgreSQL 15 privada (`demo-tenpo-db`) solo accesible desde la VPC
+- NAT Gateway para conectividad de salida controlada
 - Base de datos `appdb` y usuario `appuser`
 
 ## Limpiar
@@ -46,8 +48,9 @@ terraform destroy
 
 ```
 envs/dev/
-├── main.tf              # Config del cluster GKE
-├── database.tf          # Config de PostgreSQL
+├── main.tf              # Config del cluster GKE privado
+├── network.tf           # VPC, subnets y NAT Gateway
+├── database.tf          # PostgreSQL privado con VPC peering
 ├── variables.tf         # Variables 
 ├── terraform.tfvars     # Valores (incluye db_password)
 └── service-account.json # Credenciales (fake por ahora)
@@ -57,8 +60,10 @@ El proyecto está configurado para `ProyectoTenpoDev` pero puedes cambiar el pro
 
 ## Notas
 
-- El cluster y la BD se crean con configuración mínima para testing
-- La BD tiene backups habilitados por defecto
+- Todos los recursos son privados (sin IPs públicas)
+- El cluster GKE solo es accesible desde la VPC
+- La BD PostgreSQL solo acepta conexiones privadas
+- NAT Gateway permite salida a internet para actualizaciones
 - Recuerda destruir los recursos para evitar costos (especialmente Cloud SQL)
-- El service account necesita roles de container.admin, compute.admin y cloudsql.admin
+- El service account necesita roles de container.admin, compute.admin, cloudsql.admin y servicenetworking.serviceAgent
 - El password de BD está en terraform.tfvars (cambiar en prod)
